@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>本機檔案格式轉換 — PDF / PNG / JPEG / HEIF-HEIC</title>
+<meta name="description" content="在瀏覽器本機把 PDF、PNG、JPEG、HEIF/HEIC 互相轉換，檔案不會上傳到任何伺服器。">
+<link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+
+<a class="skip-link" href="#main">跳到主要內容</a>
+
+<header class="site-header">
+  <h1>本機檔案格式轉換</h1>
+  <p class="privacy" role="note">
+    <span aria-hidden="true">🔒</span>
+    所有檔案都在你的瀏覽器內處理，<strong>不會上傳到任何伺服器</strong>。首次載入完成後即使斷網也能繼續轉檔。
+  </p>
+</header>
+
+<div id="capability-error" class="banner banner-error" hidden></div>
+
+<main id="main">
+
+  <!-- ── 步驟 1：加入檔案 ───────────────────────────────────────── -->
+  <section class="card" aria-labelledby="h-drop">
+    <h2 id="h-drop">1. 加入檔案</h2>
+
+    <div id="dropzone" class="dropzone" tabindex="-1">
+      <div class="dropzone-inner">
+        <p class="dropzone-title">把檔案拖到這裡</p>
+        <p class="dropzone-sub">或</p>
+        <label class="btn btn-primary" for="file-input">選擇檔案…</label>
+        <input id="file-input" type="file" multiple
+               accept=".pdf,.png,.jpg,.jpeg,.jfif,.heic,.heif,.hif,application/pdf,image/png,image/jpeg,image/heic,image/heif">
+        <p class="dropzone-formats">
+          支援 PDF、PNG、JPEG/JPG、HEIF/HEIC．單檔上限 100 MB．單批最多 100 個檔案、總計 1 GB
+        </p>
+      </div>
+      <p id="dropzone-reject" class="dropzone-reject" hidden></p>
+    </div>
+  </section>
+
+  <!-- ── 步驟 2：檔案清單 ───────────────────────────────────────── -->
+  <section class="card" aria-labelledby="h-list">
+    <div class="card-head">
+      <h2 id="h-list">2. 檔案清單 <span id="file-count" class="count-badge" hidden></span></h2>
+      <button type="button" id="btn-clear" class="btn btn-quiet" hidden>清除全部</button>
+    </div>
+
+    <p id="filelist-empty" class="empty-state">
+      還沒有檔案。<br>
+      可加入 <strong>PDF</strong>、<strong>PNG</strong>、<strong>JPEG/JPG</strong>、<strong>HEIF/HEIC</strong>，
+      單一檔案不超過 100 MB。<br>
+      格式是<strong>依檔案內容判定</strong>的，副檔名被改過也沒關係。
+    </p>
+
+    <ul id="filelist" class="filelist"></ul>
+  </section>
+
+  <!-- ── 步驟 3：輸出設定 ───────────────────────────────────────── -->
+  <section class="card" aria-labelledby="h-settings">
+    <h2 id="h-settings">3. 輸出設定</h2>
+
+    <div class="settings-grid">
+
+      <!-- 格式 -->
+      <div class="field">
+        <label for="out-format">格式</label>
+        <select id="out-format">
+          <option value="pdf">PDF</option>
+          <option value="png">PNG</option>
+          <option value="jpeg">JPEG</option>
+          <option value="heic">HEIF/HEIC</option>
+        </select>
+        <p id="format-note" class="field-note" hidden></p>
+      </div>
+
+      <!-- 解析度：可自由輸入 + 單位切換 -->
+      <div class="field field-resolution">
+        <label for="dpi-value">解析度</label>
+        <div class="resolution-row">
+          <input id="dpi-value" type="text" inputmode="decimal" autocomplete="off"
+                 value="150" aria-describedby="dpi-error dpi-estimate dpi-hint">
+          <select id="dpi-unit" aria-label="解析度單位">
+            <option value="dpi">像素/英寸</option>
+            <option value="ppcm">像素/公分</option>
+          </select>
+        </div>
+        <div class="preset-row" role="group" aria-label="解析度快捷值">
+          <button type="button" class="chip" data-dpi="72">72</button>
+          <button type="button" class="chip" data-dpi="150">150</button>
+          <button type="button" class="chip" data-dpi="300">300</button>
+          <button type="button" class="chip" data-dpi="600">600</button>
+        </div>
+        <p id="dpi-error" class="field-error" hidden></p>
+        <p id="dpi-estimate" class="field-note"></p>
+        <p id="dpi-hint" class="field-note field-hint"></p>
+      </div>
+
+      <!-- JPEG 品質 -->
+      <div class="field" id="field-quality">
+        <label for="quality">JPEG 品質 <output id="quality-out" for="quality">85</output></label>
+        <input id="quality" type="range" min="1" max="100" step="1" value="85">
+      </div>
+
+      <!-- 透明背景處理 -->
+      <div class="field" id="field-background">
+        <span class="field-label" id="bg-label">透明區背景色</span>
+        <div class="radio-row" role="radiogroup" aria-labelledby="bg-label">
+          <label><input type="radio" name="bg" value="#ffffff" checked> 白色</label>
+          <label><input type="radio" name="bg" value="#000000"> 黑色</label>
+          <label><input type="radio" name="bg" value="custom"> 自訂</label>
+          <input id="bg-custom" type="color" value="#ff8800" aria-label="自訂背景色" disabled>
+        </div>
+        <p class="field-note">JPEG 沒有透明通道，透明區會先填上這個顏色。</p>
+      </div>
+
+      <!-- 最長邊上限 -->
+      <div class="field" id="field-maxedge">
+        <label class="checkbox-label">
+          <input id="maxedge-on" type="checkbox">
+          <span>限制最長邊像素</span>
+        </label>
+        <input id="maxedge" type="number" min="1" max="30000" step="1" value="4000" disabled
+               aria-label="最長邊像素上限">
+        <p class="field-note">與解析度無關的獨立選項；超過就等比縮小。</p>
+      </div>
+
+      <!-- PDF 版面 -->
+      <fieldset class="field field-wide" id="field-pdf">
+        <legend>PDF 版面</legend>
+        <div class="subgrid">
+          <div>
+            <label for="pdf-pagesize">頁面尺寸</label>
+            <select id="pdf-pagesize">
+              <option value="a4">A4（595.28 × 841.89 pt）</option>
+              <option value="a3">A3（841.89 × 1190.55 pt）</option>
+              <option value="letter">Letter（612 × 792 pt）</option>
+              <option value="auto">依原始圖片尺寸</option>
+            </select>
+          </div>
+          <div>
+            <label for="pdf-orientation">方向</label>
+            <select id="pdf-orientation">
+              <option value="auto">自動（依圖片長寬比）</option>
+              <option value="portrait">直式</option>
+              <option value="landscape">橫式</option>
+            </select>
+          </div>
+        </div>
+        <label class="checkbox-label"><input id="pdf-fit" type="checkbox" checked> <span>縮放至頁面內</span></label>
+        <label class="checkbox-label"><input id="pdf-aspect" type="checkbox" checked> <span>維持長寬比</span></label>
+        <div class="radio-row" role="radiogroup" aria-label="多檔輸出方式">
+          <label><input type="radio" name="pdfmode" value="separate" checked> 每個檔案各自輸出 PDF</label>
+          <label><input type="radio" name="pdfmode" value="merge"> 合成單一多頁 PDF</label>
+        </div>
+      </fieldset>
+
+      <!-- PDF 頁面範圍（有 PDF 輸入時才顯示） -->
+      <div class="field field-wide" id="field-pagerange" hidden>
+        <label for="pagerange">PDF 頁面範圍</label>
+        <div class="resolution-row">
+          <select id="pagerange-mode" aria-label="PDF 頁面範圍模式">
+            <option value="all">全部頁面</option>
+            <option value="custom">自訂範圍</option>
+          </select>
+          <input id="pagerange" type="text" value="1-3" placeholder="例如 1-3 或 1,3,5" hidden
+                 aria-describedby="pagerange-error">
+        </div>
+        <p id="pagerange-error" class="field-error" hidden></p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ── 步驟 4：轉換 ─────────────────────────────────────────── -->
+  <section class="card" aria-labelledby="h-run">
+    <h2 id="h-run">4. 開始轉換</h2>
+    <div class="actions">
+      <button type="button" id="btn-convert" class="btn btn-primary" disabled>開始轉換</button>
+      <button type="button" id="btn-cancel" class="btn btn-danger" hidden>取消</button>
+      <button type="button" id="btn-zip" class="btn" hidden>全部下載（ZIP）</button>
+    </div>
+    <div id="batch-progress" class="batch-progress" hidden>
+      <div class="bar"><div id="batch-bar" class="bar-fill"></div></div>
+      <p id="batch-text" class="field-note"></p>
+    </div>
+    <ul id="batch-outputs" class="batch-outputs"></ul>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <p>純前端、零上傳。所有函式庫與 WebAssembly 都與本站一起部署，轉檔過程不會對外連線。</p>
+  <p id="env-note" class="field-note"></p>
+</footer>
+
+<!-- 狀態變化的無障礙播報 -->
+<p id="live" class="visually-hidden" aria-live="polite" aria-atomic="false"></p>
+
+<!-- 確認對話框（超出 canvas 上限時使用） -->
+<dialog id="confirm-dialog">
+  <form method="dialog">
+    <h2 id="confirm-title">確認</h2>
+    <p id="confirm-body"></p>
+    <div class="actions">
+      <button value="cancel" class="btn">取消</button>
+      <button value="ok" id="confirm-ok" class="btn btn-primary">繼續</button>
+    </div>
+  </form>
+</dialog>
+
+<template id="tpl-file-row">
+  <li class="file-row" data-status="waiting">
+    <div class="thumb"><div class="thumb-placeholder" aria-hidden="true"></div></div>
+    <div class="file-main">
+      <p class="file-name"></p>
+      <p class="file-meta"></p>
+      <p class="file-note" hidden></p>
+      <div class="bar"><div class="bar-fill"></div></div>
+    </div>
+    <div class="file-status"><span class="status-text">等待中</span></div>
+    <div class="file-actions">
+      <button type="button" class="btn btn-small btn-download" hidden>下載</button>
+      <button type="button" class="btn btn-small btn-retry" hidden>重試</button>
+      <button type="button" class="btn btn-small btn-remove" aria-label="移除這個檔案">移除</button>
+    </div>
+    <ul class="outputs"></ul>
+  </li>
+</template>
+
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
